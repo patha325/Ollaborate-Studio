@@ -5,6 +5,7 @@ from typing import Any
 
 from ollaborate import Agent, Team
 
+from .mcp_plugins import tools_for_agent
 from .models import AgentConfig, RunRequest, RunResponse
 from .providers import make_client
 from .workspace import Workspace
@@ -24,10 +25,13 @@ async def execute(request: RunRequest) -> RunResponse:
         events.append({"kind": event.kind, "agent": event.agent, "data": event.data})
 
     configs = {config.id: config for config in request.team.agents}
-    agents = {
-        config.id: _make_agent(config, workspace, request.allow_writes)
-        for config in configs.values()
-    }
+    mcp_servers = {server.id: server for server in request.mcp_servers}
+    agents = {}
+    for config in configs.values():
+        plugin_tools = await tools_for_agent(config.mcp_server_ids, mcp_servers)
+        agents[config.id] = _make_agent(
+            config, workspace, request.allow_writes, plugin_tools
+        )
     provider_ids = {config.provider_id for config in configs.values()}
     if len(provider_ids) != 1:
         result = await _run_mixed_provider_team(request, agents, providers, record)
@@ -42,7 +46,12 @@ async def execute(request: RunRequest) -> RunResponse:
     return RunResponse(output=result.output, contributions=result.contributions, events=events)
 
 
-def _make_agent(config: AgentConfig, workspace: Workspace, allow_writes: bool) -> Agent:
+def _make_agent(
+    config: AgentConfig,
+    workspace: Workspace,
+    allow_writes: bool,
+    plugin_tools: list[Any] | None = None,
+) -> Agent:
     available = {
         "list_files": workspace.list_files,
         "read_file": workspace.read_file,
@@ -51,6 +60,7 @@ def _make_agent(config: AgentConfig, workspace: Workspace, allow_writes: bool) -
     if allow_writes:
         available["write_file"] = workspace.write_file
     tools = [available[name] for name in config.capabilities if name in available]
+    tools.extend(plugin_tools or [])
     return Agent(
         name=config.name,
         role=config.role,

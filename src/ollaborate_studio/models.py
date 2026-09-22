@@ -24,6 +24,31 @@ class AgentConfig(BaseModel):
         Field(default_factory=lambda: ["list_files", "read_file", "search_files"])
     )
     max_tool_rounds: int = Field(default=6, ge=0, le=20)
+    mcp_server_ids: list[str] = Field(default_factory=list)
+
+
+class MCPServerConfig(BaseModel):
+    id: str
+    name: str
+    transport: Literal["stdio"] = "stdio"
+    command: str
+    args: list[str] = Field(default_factory=list)
+    env: dict[str, SecretStr] = Field(default_factory=dict)
+    enabled: bool = True
+    trusted: bool = False
+
+    @classmethod
+    def agent_reach(cls) -> MCPServerConfig:
+        return cls(
+            id="agent-reach",
+            name="Agent Reach",
+            command="python",
+            args=["-m", "agent_reach.integrations.mcp_server"],
+        )
+
+
+class MCPDiscoverRequest(BaseModel):
+    server: MCPServerConfig
 
 
 class TeamConfig(BaseModel):
@@ -50,6 +75,7 @@ class RunRequest(BaseModel):
     task: str = Field(min_length=1, max_length=20_000)
     team: TeamConfig
     providers: list[ProviderConfig] = Field(default_factory=list)
+    mcp_servers: list[MCPServerConfig] = Field(default_factory=list)
     workspace: str = "."
     allow_writes: bool = False
 
@@ -63,4 +89,3 @@ class RunResponse(BaseModel):
 class FilePayload(BaseModel):
     path: str
     content: str
-

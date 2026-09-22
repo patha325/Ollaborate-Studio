@@ -7,7 +7,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .models import FilePayload, RunRequest, RunResponse
+from .mcp_plugins import MCPPluginClient
+from .models import FilePayload, MCPDiscoverRequest, MCPServerConfig, RunRequest, RunResponse
 from .runtime import execute
 from .workspace import Workspace
 
@@ -59,10 +60,36 @@ async def run_team(request: RunRequest) -> RunResponse:
         raise HTTPException(400, str(exc)) from exc
 
 
+@app.get("/api/mcp/presets")
+async def mcp_presets() -> dict[str, list[dict[str, object]]]:
+    preset = MCPServerConfig.agent_reach()
+    return {"servers": [preset.model_dump(mode="json")]}
+
+
+@app.post("/api/mcp/discover")
+async def discover_mcp(request: MCPDiscoverRequest) -> dict[str, object]:
+    try:
+        if not request.server.trusted:
+            raise ValueError("Trust this MCP server before starting it for tool discovery")
+        tools = await MCPPluginClient(request.server).list_tools()
+        return {
+            "server_id": request.server.id,
+            "tools": [
+                {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "input_schema": tool.input_schema,
+                }
+                for tool in tools
+            ],
+        }
+    except Exception as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
 def run() -> None:
     uvicorn.run("ollaborate_studio.main:app", host="127.0.0.1", port=8765, reload=False)
 
 
 if __name__ == "__main__":
     run()
-

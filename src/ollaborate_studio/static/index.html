@@ -21,6 +21,7 @@
     <aside class="activity" aria-label="Activity bar">
       <button class="activity-button active" data-view="files" title="Explorer">⌘</button>
       <button class="activity-button" data-view="agents" title="Agents">◎</button>
+      <button class="activity-button" data-view="plugins" title="MCP plugins">⬡</button>
       <button class="activity-button" data-view="runs" title="Runs">◫</button>
     </aside>
 
@@ -36,6 +37,10 @@
       <section id="runsView" class="side-view">
         <div class="section-title">RUN EVENTS</div>
         <div id="eventList" class="events"><p class="muted">No run yet.</p></div>
+      </section>
+      <section id="pluginsView" class="side-view">
+        <div class="section-title">MCP PLUGINS <button id="addPlugin" title="Add MCP server">＋</button></div>
+        <div id="pluginList" class="plugin-list"></div>
       </section>
     </aside>
 
@@ -102,7 +107,26 @@ Every contribution and tool action remains inspectable.</textarea>
         <label><input type="checkbox" name="capability" value="search_files" checked> Search</label>
         <label><input type="checkbox" name="capability" value="write_file"> Write files</label>
       </div>
+      <label>MCP plugins</label>
+      <div id="agentPlugins" class="checks"></div>
       <div class="dialog-actions"><button value="cancel" class="ghost">Cancel</button><button id="saveAgent" value="default" class="primary">Save agent</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="pluginDialog">
+    <form method="dialog" id="pluginForm">
+      <div class="dialog-head"><h2>Configure MCP plugin</h2><button value="cancel" class="icon-button">×</button></div>
+      <input type="hidden" id="pluginId">
+      <label>Name<input id="pluginName" required></label>
+      <label>Command<input id="pluginCommand" required placeholder="python"></label>
+      <label>Arguments<input id="pluginArgs" placeholder="-m package.server"></label>
+      <div class="checks">
+        <label><input id="pluginEnabled" type="checkbox" checked> Enabled</label>
+        <label><input id="pluginTrusted" type="checkbox"> Trust tools for agent use</label>
+      </div>
+      <p class="warning">Starting or discovering an MCP server executes its command with your user permissions. Only trust software you have reviewed.</p>
+      <div id="pluginTools" class="tool-preview muted">Discover tools to verify the server.</div>
+      <div class="dialog-actions"><button id="discoverPlugin" type="button" class="ghost">Discover tools</button><button value="cancel" class="ghost">Cancel</button><button id="savePlugin" value="default" class="primary">Save plugin</button></div>
     </form>
   </dialog>
 
@@ -119,4 +143,3 @@ Every contribution and tool action remains inspectable.</textarea>
   <script src="/assets/app.js"></script>
 </body>
 </html>
-

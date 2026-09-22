@@ -1,10 +1,11 @@
 const state = {
   currentFile: null,
   providers: [{ id: "local", name: "Local Ollama", kind: "ollama", base_url: "http://localhost:11434" }],
+  mcpServers: [{ id: "agent-reach", name: "Agent Reach", transport: "stdio", command: "python", args: ["-m", "agent_reach.integrations.mcp_server"], env: {}, enabled: true, trusted: false }],
   agents: [
-    { id: crypto.randomUUID(), name: "Ada", role: "implementation engineer", model: "qwen3:8b", provider_id: "local", instructions: "Inspect the project before proposing changes.", capabilities: ["list_files", "read_file", "search_files", "write_file"], max_tool_rounds: 6 },
-    { id: crypto.randomUUID(), name: "Linus", role: "skeptical code reviewer", model: "qwen3:8b", provider_id: "local", instructions: "Find defects, security risks, and missing tests.", capabilities: ["list_files", "read_file", "search_files"], max_tool_rounds: 6 },
-    { id: crypto.randomUUID(), name: "Grace", role: "technical lead and synthesizer", model: "qwen3:8b", provider_id: "local", instructions: "Synthesize a precise, actionable final result.", capabilities: ["list_files", "read_file", "search_files"], max_tool_rounds: 6 },
+    { id: crypto.randomUUID(), name: "Ada", role: "implementation engineer", model: "qwen3:8b", provider_id: "local", instructions: "Inspect the project before proposing changes.", capabilities: ["list_files", "read_file", "search_files", "write_file"], mcp_server_ids: [], max_tool_rounds: 6 },
+    { id: crypto.randomUUID(), name: "Linus", role: "skeptical code reviewer", model: "qwen3:8b", provider_id: "local", instructions: "Find defects, security risks, and missing tests.", capabilities: ["list_files", "read_file", "search_files"], mcp_server_ids: [], max_tool_rounds: 6 },
+    { id: crypto.randomUUID(), name: "Grace", role: "technical lead and synthesizer", model: "qwen3:8b", provider_id: "local", instructions: "Synthesize a precise, actionable final result.", capabilities: ["list_files", "read_file", "search_files"], mcp_server_ids: [], max_tool_rounds: 6 },
   ]
 };
 
@@ -80,13 +81,14 @@ function editAgent(id = null) {
   $("#agentProvider").innerHTML = state.providers.map(provider => `<option value="${provider.id}">${escapeHtml(provider.name)}</option>`).join("");
   $("#agentProvider").value = agent?.provider_id || "local";
   document.querySelectorAll('[name="capability"]').forEach(check => check.checked = (agent?.capabilities || ["list_files", "read_file", "search_files"]).includes(check.value));
+  $("#agentPlugins").innerHTML = state.mcpServers.map(server => `<label><input type="checkbox" name="agentPlugin" value="${server.id}" ${(agent?.mcp_server_ids || []).includes(server.id) ? "checked" : ""}> ${escapeHtml(server.name)}</label>`).join("") || '<span class="muted">No MCP plugins configured.</span>';
   $("#agentDialog").showModal();
 }
 
 function saveAgent(event) {
   event.preventDefault();
   const id = $("#agentId").value || crypto.randomUUID();
-  const config = { id, name: $("#agentName").value, role: $("#agentRole").value, provider_id: $("#agentProvider").value, model: $("#agentModel").value, instructions: $("#agentInstructions").value, capabilities: [...document.querySelectorAll('[name="capability"]:checked')].map(item => item.value), max_tool_rounds: 6 };
+  const config = { id, name: $("#agentName").value, role: $("#agentRole").value, provider_id: $("#agentProvider").value, model: $("#agentModel").value, instructions: $("#agentInstructions").value, capabilities: [...document.querySelectorAll('[name="capability"]:checked')].map(item => item.value), mcp_server_ids: [...document.querySelectorAll('[name="agentPlugin"]:checked')].map(item => item.value), max_tool_rounds: 6 };
   const index = state.agents.findIndex(agent => agent.id === id);
   if (index >= 0) state.agents[index] = config; else state.agents.push(config);
   $("#agentDialog").close();
@@ -110,6 +112,44 @@ function appendMessage(who, text, type = "agent") {
   $("#conversation").scrollTop = $("#conversation").scrollHeight;
 }
 
+function renderPlugins() {
+  $("#pluginList").innerHTML = state.mcpServers.map(server => `<div class="plugin-card" data-id="${server.id}"><span class="plugin-badge ${server.trusted ? "" : "untrusted"}">${server.trusted ? "trusted" : "inspect"}</span><strong>${escapeHtml(server.name)}</strong><small>${escapeHtml(server.command)} ${escapeHtml(server.args.join(" "))}</small></div>`).join("") || '<p class="muted">No MCP plugins configured.</p>';
+  document.querySelectorAll(".plugin-card").forEach(card => card.addEventListener("click", () => editPlugin(card.dataset.id)));
+}
+
+function editPlugin(id = null) {
+  const plugin = state.mcpServers.find(item => item.id === id);
+  $("#pluginId").value = plugin?.id || "";
+  $("#pluginName").value = plugin?.name || "";
+  $("#pluginCommand").value = plugin?.command || "";
+  $("#pluginArgs").value = (plugin?.args || []).join(" ");
+  $("#pluginEnabled").checked = plugin?.enabled ?? true;
+  $("#pluginTrusted").checked = plugin?.trusted ?? false;
+  $("#pluginTools").textContent = "Discover tools to verify the server.";
+  $("#pluginDialog").showModal();
+}
+
+function pluginFromForm() {
+  return { id: $("#pluginId").value || `mcp-${crypto.randomUUID()}`, name: $("#pluginName").value, transport: "stdio", command: $("#pluginCommand").value, args: $("#pluginArgs").value.trim().split(/\s+/).filter(Boolean), env: {}, enabled: $("#pluginEnabled").checked, trusted: $("#pluginTrusted").checked };
+}
+
+async function discoverPlugin() {
+  $("#pluginTools").textContent = "Connecting…";
+  try {
+    const result = await api("/api/mcp/discover", { method: "POST", body: JSON.stringify({ server: pluginFromForm() }) });
+    $("#pluginTools").innerHTML = result.tools.map(tool => `<div><code>${escapeHtml(tool.name)}</code> — ${escapeHtml(tool.description || "No description")}</div>`).join("") || "Server returned no tools.";
+  } catch (error) { $("#pluginTools").textContent = error.message; }
+}
+
+function savePlugin(event) {
+  event.preventDefault();
+  const config = pluginFromForm();
+  const index = state.mcpServers.findIndex(server => server.id === config.id);
+  if (index >= 0) state.mcpServers[index] = config; else state.mcpServers.push(config);
+  $("#pluginDialog").close();
+  renderPlugins();
+}
+
 function showError(error) { setStatus("Error"); appendMessage("Error", error.message, "error"); }
 
 async function runTeam(event) {
@@ -121,7 +161,7 @@ async function runTeam(event) {
   setStatus("Agents working", true);
   const pattern = $("#pattern").value;
   const last = state.agents.at(-1)?.id;
-  const body = { task, workspace: workspace(), allow_writes: $("#allowWrites").checked, providers: state.providers, team: { name: "Studio team", pattern, agents: state.agents, synthesizer_id: pattern === "panel" ? last : null, judge_id: pattern === "debate" ? last : null, router_id: pattern === "route" ? state.agents[0]?.id : null, debate_rounds: 2 } };
+  const body = { task, workspace: workspace(), allow_writes: $("#allowWrites").checked, providers: state.providers, mcp_servers: state.mcpServers, team: { name: "Studio team", pattern, agents: state.agents, synthesizer_id: pattern === "panel" ? last : null, judge_id: pattern === "debate" ? last : null, router_id: pattern === "route" ? state.agents[0]?.id : null, debate_rounds: 2 } };
   try {
     const result = await api("/api/runs", { method: "POST", body: JSON.stringify(body) });
     appendMessage("Team", result.output);
@@ -142,6 +182,9 @@ $("#addAgent").addEventListener("click", () => editAgent());
 $("#agentForm").addEventListener("submit", saveAgent);
 $("#pattern").addEventListener("change", renderAgents);
 $("#settingsButton").addEventListener("click", () => { renderProviders(); $("#providerDialog").showModal(); });
+$("#addPlugin").addEventListener("click", () => editPlugin());
+$("#pluginForm").addEventListener("submit", savePlugin);
+$("#discoverPlugin").addEventListener("click", discoverPlugin);
 $("#addProvider").addEventListener("click", () => { state.providers.push({ id: `external-${state.providers.length}`, name: "External provider", kind: "openai-compatible", base_url: "https://api.openai.com/v1", api_key: "" }); renderProviders(); });
 $("#providerForm").addEventListener("submit", saveProviders);
 $("#taskForm").addEventListener("submit", runTeam);
@@ -155,6 +198,6 @@ document.addEventListener("keydown", event => {
 });
 
 renderAgents();
+renderPlugins();
 updateEditor();
 loadFiles();
-
