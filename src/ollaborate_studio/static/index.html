@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ollaborate Studio</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="mark">O</span><strong>Ollaborate</strong><span>Studio</span></div>
+    <div class="workspace-control">
+      <label for="workspace">Workspace</label>
+      <input id="workspace" value="." aria-label="Workspace path">
+      <button id="openWorkspace" class="ghost">Open</button>
+    </div>
+    <div class="status"><span class="status-dot"></span><span id="statusText">Ready</span></div>
+  </header>
+
+  <main class="shell">
+    <aside class="activity" aria-label="Activity bar">
+      <button class="activity-button active" data-view="files" title="Explorer">⌘</button>
+      <button class="activity-button" data-view="agents" title="Agents">◎</button>
+      <button class="activity-button" data-view="runs" title="Runs">◫</button>
+    </aside>
+
+    <aside class="sidebar">
+      <section id="filesView" class="side-view active">
+        <div class="section-title">EXPLORER <button id="refreshFiles" title="Refresh">↻</button></div>
+        <div id="fileTree" class="file-tree"></div>
+      </section>
+      <section id="agentsView" class="side-view">
+        <div class="section-title">AGENT TEAM <button id="addAgent" title="Add agent">＋</button></div>
+        <div id="agentList"></div>
+      </section>
+      <section id="runsView" class="side-view">
+        <div class="section-title">RUN EVENTS</div>
+        <div id="eventList" class="events"><p class="muted">No run yet.</p></div>
+      </section>
+    </aside>
+
+    <section class="workbench">
+      <div class="tabs"><button class="tab active"><span id="fileName">welcome.md</span><span>×</span></button></div>
+      <div class="editor-wrap">
+        <div id="lineNumbers" class="line-numbers">1</div>
+        <textarea id="editor" spellcheck="false" aria-label="Code editor"># Ollaborate Studio
+
+An agent-first IDE for local and external language models.
+
+Choose a workspace, configure your specialists, and give the team a task.
+Every contribution and tool action remains inspectable.</textarea>
+      </div>
+      <div class="editor-footer"><span id="cursor">Ln 1, Col 1</span><span>UTF-8</span><span id="language">Markdown</span></div>
+    </section>
+
+    <aside class="agent-panel">
+      <div class="panel-heading">
+        <div><span class="eyebrow">ORCHESTRATION</span><h1>Agent Console</h1></div>
+        <button id="settingsButton" class="icon-button" title="Provider settings">⚙</button>
+      </div>
+      <div class="pattern-row">
+        <label for="pattern">Pattern</label>
+        <select id="pattern">
+          <option value="panel">Parallel panel</option>
+          <option value="pipeline">Sequential pipeline</option>
+          <option value="debate">Bounded debate</option>
+          <option value="route">Supervisor routing</option>
+        </select>
+      </div>
+      <div id="teamCanvas" class="team-canvas"></div>
+      <div class="conversation" id="conversation">
+        <div class="message system-message">
+          <span class="avatar">O</span>
+          <div><strong>Studio</strong><p>Your team is ready. Local Ollama is the default provider.</p></div>
+        </div>
+      </div>
+      <form id="taskForm" class="composer">
+        <textarea id="task" placeholder="Ask the team to inspect, explain, or change this project…" required></textarea>
+        <div class="composer-actions">
+          <label class="write-toggle"><input id="allowWrites" type="checkbox"> Allow agent writes</label>
+          <button id="runButton" type="submit" class="primary">Run team <span>⌘↵</span></button>
+        </div>
+      </form>
+    </aside>
+  </main>
+
+  <dialog id="agentDialog">
+    <form method="dialog" id="agentForm">
+      <div class="dialog-head"><h2>Configure agent</h2><button value="cancel" class="icon-button">×</button></div>
+      <input type="hidden" id="agentId">
+      <label>Name<input id="agentName" required></label>
+      <label>Role<input id="agentRole" required></label>
+      <div class="form-grid">
+        <label>Provider<select id="agentProvider"></select></label>
+        <label>Model<input id="agentModel" value="qwen3:8b" required></label>
+      </div>
+      <label>Instructions<textarea id="agentInstructions"></textarea></label>
+      <label>Capabilities</label>
+      <div class="checks">
+        <label><input type="checkbox" name="capability" value="list_files" checked> List files</label>
+        <label><input type="checkbox" name="capability" value="read_file" checked> Read files</label>
+        <label><input type="checkbox" name="capability" value="search_files" checked> Search</label>
+        <label><input type="checkbox" name="capability" value="write_file"> Write files</label>
+      </div>
+      <div class="dialog-actions"><button value="cancel" class="ghost">Cancel</button><button id="saveAgent" value="default" class="primary">Save agent</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="providerDialog">
+    <form method="dialog" id="providerForm">
+      <div class="dialog-head"><h2>Model providers</h2><button value="cancel" class="icon-button">×</button></div>
+      <p class="muted">Ollama stays local. External keys remain in this browser session and are sent only to the Studio backend.</p>
+      <div id="providerList"></div>
+      <button id="addProvider" type="button" class="ghost full">＋ Add OpenAI-compatible provider</button>
+      <div class="dialog-actions"><button value="cancel" class="ghost">Close</button><button id="saveProviders" value="default" class="primary">Save</button></div>
+    </form>
+  </dialog>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ollaborate-studio"
+version = "0.1.0"
+description = "An agent-first IDE powered by Ollaborate"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Patrik Hallsjo"}]
+dependencies = [
+  "fastapi>=0.115",
+  "httpx>=0.27",
+  "ollaborate>=0.1.0",
+  "ollama>=0.4.7",
+  "pydantic>=2.7",
+  "uvicorn[standard]>=0.30",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "ruff>=0.9"]
+
+[project.scripts]
+ollaborate-studio = "ollaborate_studio.main:run"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ollaborate_studio"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+

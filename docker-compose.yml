@@ -1,0 +1,19 @@
+services:
+  studio:
+    build: .
+    ports:
+      - "127.0.0.1:8765:8765"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    volumes:
+      - ./example-workspace:/workspace
+    depends_on:
+      - ollama
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama-data:/root/.ollama
+
+volumes:
+  ollama-data:
+
